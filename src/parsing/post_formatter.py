@@ -439,8 +439,9 @@ class PostFormatter:
         title = self.title or 'Untitled'
         effective_title_type = title_type
 
-        # auto_title_from_body: if no title and option enabled, derive a compact title from the message body.
-        if auto_title_from_body == 1 and effective_title_type == NO_POST_TITLE and self.html_tree:
+        # auto_title_from_body: when self.title is genuinely absent (not just hidden),
+        # derive a title from the body by taking text before the first colon.
+        if auto_title_from_body == 1 and not self.title and self.html_tree:
             body_title = self._get_title_from_body()
             if body_title:
                 title = body_title
@@ -536,6 +537,18 @@ class PostFormatter:
             return header, footer
         raise ValueError(f'Unknown message style: {message_style}')
 
+    def _get_title_from_body(self) -> Optional[str]:
+        """Extract title from body by taking text before the first fullwidth/halfwidth colon."""
+        if not self.html_tree:
+            return None
+        plain_text = self.html_tree.get_html(plain=True)
+        match = re.match(r'(.+?)[：:]', plain_text)
+        if match:
+            extracted = match.group(1).strip()
+            if extracted:
+                return extracted
+        return None
+
     def generate_formatted_post(self,
                                 sub_title: Optional[str],
                                 tags: list[str],
@@ -556,7 +569,7 @@ class PostFormatter:
                                                          title_body_spacing=title_body_spacing,
                                                          auto_title_from_body=auto_title_from_body)
         content = self.parsed_html if message_type == NORMAL_MESSAGE else ''
-        sep = '\n\n' if title_body_spacing == FORCE_ENABLE else '\n'
+        sep = '\n' if title_body_spacing == 1 else '\n\n'
         return (
                 header
                 + (sep if header and content else '')
@@ -564,15 +577,6 @@ class PostFormatter:
                 + (sep if (header or content) and footer else '')
                 + footer
         )
-
-    def _get_title_from_body(self) -> Optional[str]:
-        plain_text = utils.unescape(self.html_tree.get_html(plain=True))
-        for line in plain_text.splitlines():
-            title = utils.stripAnySpace(line).strip()
-            if title:
-                return title[:128]
-        title = utils.stripAnySpace(plain_text).strip()
-        return title[:128] if title else None
 
     async def parse_html(self):
         parsed = await parse(html=self.html, feed_link=self.feed_link)
