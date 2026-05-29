@@ -1,9 +1,10 @@
-# Please read https://github.com/Rongronggg9/RSS-to-Telegram-Bot/blob/master/docs/deployment-guide.md for more details.
+# Fork by lucking7, based on Rongronggg9/RSS-to-Telegram-Bot
 version: '3.6'
 
 services:
   main:
-    image: rongronggg9/rss-to-telegram:dev  # stable image: rongronggg9/rss-to-telegram
+    build: .
+    # image: lucking7/rsstt:dev  # 可选：推送镜像后取消注释，注释 build 行
     container_name: rsstt  # need to be unique
     restart: unless-stopped
     volumes:
