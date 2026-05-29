@@ -254,6 +254,7 @@ TELEGRAPH_TOKEN: Final = __list_parser(os.environ.get('TELEGRAPH_TOKEN'))
 
 MULTIUSER: Final = __bool_parser(os.environ.get('MULTIUSER'), default_value=True)
 
+MONITOR_INTERVAL_SECS: Final = int(os.environ.get('MONITOR_INTERVAL_SECS') or 30)
 CRON_SECOND: Final = int(os.environ.get('CRON_SECOND') or 0) % 60
 
 # ----- network config -----

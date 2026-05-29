@@ -219,11 +219,10 @@ class Monitor(Singleton):
         if not feed_ids_set:
             return
 
-        # Assuming the method is called once per minute, let's divide feed_ids into 60 chunks and submit one by one
-        # every second.
+        # Divide feed_ids into chunks and submit one chunk per second over the monitoring interval.
         feed_ids: list[int] = list(feed_ids_set)
         feed_count = len(feed_ids)
-        chunk_count = 60
+        chunk_count = env.MONITOR_INTERVAL_SECS
         larger_chunk_count = feed_count % chunk_count
         smaller_chunk_size = feed_count // chunk_count
         smaller_chunk_count = chunk_count - larger_chunk_count

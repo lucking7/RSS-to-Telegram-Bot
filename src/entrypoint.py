@@ -342,10 +342,13 @@ def main():
 
         loop.create_task(lazy())
 
-        scheduler.add_job(func=monitor.run_periodic_task,
-                          trigger=CronTrigger(minute='*', second=env.CRON_SECOND, timezone='UTC'),
-                          max_instances=10,
-                          misfire_grace_time=10)
+        scheduler.add_job(
+            func=monitor.run_periodic_task,
+            trigger=CronTrigger(second=f'*/{env.MONITOR_INTERVAL_SECS}', timezone='UTC'),
+            max_instances=10,
+            misfire_grace_time=10,
+            id='monitor_periodic_task',
+        )
         scheduler.start()
 
         loop.run_until_complete(bot.disconnected)
