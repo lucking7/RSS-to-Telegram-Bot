@@ -268,30 +268,32 @@ class EffectiveTasks:
         """
         return cls.__all_tasks[feed_id] if cls.exist(feed_id) else None
 
-    def __get_tasks(self) -> set[int]:
+    def __get_tasks(self, monitor_interval_secs: int = 60) -> set[int]:
         if len(self.__all_feeds) == 0:
             return set()  # nothing to run
+        run_count_limit = max(1, ceil(self.interval * 60 / monitor_interval_secs))
         if self.__run_count == 0:
             self.__pending_feeds = list(self.__all_feeds)
             shuffle(self.__pending_feeds)  # randomize
 
-        pop_count = ceil(len(self.__pending_feeds) / (self.interval - self.__run_count))
+        pop_count = ceil(len(self.__pending_feeds) / (run_count_limit - self.__run_count))
         # tasks_to_run = set(self.__pending_feeds.pop() for _ in range(pop_count) if self.__pending_feeds)
         tasks_to_run = set(self.__pending_feeds[:pop_count])
         del self.__pending_feeds[:pop_count]
-        self.__run_count = self.__run_count + 1 if self.__run_count + 1 < self.interval else 0
+        self.__run_count = self.__run_count + 1 if self.__run_count + 1 < run_count_limit else 0
         return tasks_to_run
 
     @classmethod
-    def get_tasks(cls) -> set[int]:
+    def get_tasks(cls, monitor_interval_secs: int = 60) -> set[int]:
         """
         Get tasks to be run.
 
+        :param monitor_interval_secs: seconds between scheduler ticks
         :return: a `set` contains the ids of feeds in tasks to be run
         """
         tasks_to_run = set()
         for effective_tasks in cls.__task_buckets.values():
-            tasks = effective_tasks.__get_tasks()
+            tasks = effective_tasks.__get_tasks(monitor_interval_secs=monitor_interval_secs)
             if tasks:
                 tasks_to_run.update(tasks)
 

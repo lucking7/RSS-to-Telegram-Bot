@@ -66,6 +66,8 @@ class User(Model, Base):
     display_entry_tags = fields.SmallIntField(default=-1)
     style = fields.SmallIntField(default=0)
     display_media = fields.SmallIntField(default=0)
+    title_body_spacing = fields.SmallIntField(default=0)
+    auto_title_from_body = fields.SmallIntField(default=-1)
 
     class Meta:
         table = 'user'
@@ -208,6 +210,8 @@ class Sub(Model, Base):
         description='Display media or not?'
                     '-1=disable, 0=enable',
     )
+    title_body_spacing = fields.SmallIntField(default=-100)
+    auto_title_from_body = fields.SmallIntField(default=-100)
 
     class Meta:
         table = 'sub'

@@ -139,7 +139,9 @@ class PostFormatter:
                                  display_title: int = 0,
                                  display_entry_tags: int = -1,
                                  style: int = 0,
-                                 display_media: int = 0) -> Optional[tuple[str, bool, bool]]:
+                                 display_media: int = 0,
+                                 title_body_spacing: int = 0,
+                                 auto_title_from_body: int = -1) -> Optional[tuple[str, bool, bool]]:
         """
         Get formatted post.
 
@@ -156,6 +158,8 @@ class PostFormatter:
         :param display_entry_tags: -1=disable, 1=force display
         :param style: 0=RSStT, 1=flowerss
         :param display_media: -1=disable, 0=enable
+        :param title_body_spacing: 0=compact, 1=blank line between title and body
+        :param auto_title_from_body: -1=disable, 1=derive title from body when title is absent
         :return: (formatted post, need media, need linkpreview)
         """
         assert send_mode in {FORCE_LINK, AUTO, FORCE_TELEGRAPH, FORCE_MESSAGE}
@@ -168,12 +172,15 @@ class PostFormatter:
         assert display_entry_tags in {DISABLE, FORCE_DISPLAY}
         assert display_media in {DISABLE, AUTO, ONLY_MEDIA_NO_CONTENT}
         assert style in {RSSTT, FLOWERSS}
+        assert title_body_spacing in {AUTO, FORCE_ENABLE}
+        assert auto_title_from_body in {DISABLE, FORCE_ENABLE}
 
         sub_title = (sub_title or self.feed_title)
         tags = tags or []
 
         param_hash = f'{sub_title}|{tags}|{send_mode}|{length_limit}|{link_preview}|' \
-                     f'{display_author}|{display_via}|{display_title}|{display_entry_tags}|{display_media}|{style}'
+                     f'{display_author}|{display_via}|{display_title}|{display_entry_tags}|{display_media}|{style}|' \
+                     f'{title_body_spacing}|{auto_title_from_body}'
 
         if param_hash in self.__param_to_option_cache:
             option_hash = self.__param_to_option_cache[param_hash]
@@ -276,7 +283,9 @@ class PostFormatter:
                                                            via_type=via_type,
                                                            need_author=need_author,
                                                            message_type=NORMAL_MESSAGE,
-                                                           message_style=message_style)
+                                                           message_style=message_style,
+                                                           title_body_spacing=title_body_spacing,
+                                                           auto_title_from_body=auto_title_from_body)
             normal_msg_len = get_plain_text_length(normal_msg_post)
             if (
                     (
@@ -333,7 +342,8 @@ class PostFormatter:
         # ---- determine need_link_preview ----
         need_link_preview = link_preview != DISABLE and (link_preview == FORCE_ENABLE or message_type != NORMAL_MESSAGE)
 
-        option_hash = f'{sub_title}|{tags}|{title_type}|{via_type}|{need_author}|{message_type}|{message_style}'
+        option_hash = f'{sub_title}|{tags}|{title_type}|{via_type}|{need_author}|{message_type}|{message_style}|' \
+                      f'{title_body_spacing}|{auto_title_from_body}'
         self.__param_to_option_cache[param_hash] = option_hash
 
         if option_hash in self.__post_bucket:
@@ -366,7 +376,9 @@ class PostFormatter:
                                                 via_type=via_type,
                                                 need_author=need_author,
                                                 message_type=message_type,
-                                                message_style=message_style)
+                                                message_style=message_style,
+                                                title_body_spacing=title_body_spacing,
+                                                auto_title_from_body=auto_title_from_body)
             self.__post_bucket[option_hash] = post, need_media, need_link_preview
             return post, need_media, need_link_preview
 
@@ -377,7 +389,9 @@ class PostFormatter:
                                    via_type: TypeViaType,
                                    need_author: bool,
                                    message_type: TypeMessageType,
-                                   message_style: TypeMessageStyle) -> tuple[str, str]:
+                                   message_style: TypeMessageStyle,
+                                   title_body_spacing: int = 0,
+                                   auto_title_from_body: int = -1) -> tuple[str, str]:
         # RSStT style:
         # {title}
         # {hashtag}  (* optional)
@@ -423,6 +437,14 @@ class PostFormatter:
 
         feed_title = sub_title or self.feed_title
         title = self.title or 'Untitled'
+        effective_title_type = title_type
+
+        # auto_title_from_body: if no title and option enabled, derive a compact title from the message body.
+        if auto_title_from_body == 1 and effective_title_type == NO_POST_TITLE and self.html_tree:
+            body_title = self._get_title_from_body()
+            if body_title:
+                title = body_title
+                effective_title_type = POST_TITLE_NO_LINK
 
         # ---- hashtags ----
         tags_html = Text('#' + ' #'.join(tags)).get_html() if tags else None
@@ -434,9 +456,9 @@ class PostFormatter:
             # ---- title ----
             if message_type == TELEGRAPH_MESSAGE:
                 title_text = Link(title, param=self.telegraph_link)
-            elif title_type == POST_TITLE_W_LINK:
+            elif effective_title_type == POST_TITLE_W_LINK:
                 title_text = Link(title, param=self.link)
-            elif title_type == POST_TITLE_NO_LINK:
+            elif effective_title_type == POST_TITLE_NO_LINK:
                 title_text = Text(title)
             else:  # NO_TITLE
                 title_text = None
@@ -476,9 +498,9 @@ class PostFormatter:
                 feed_title_html = None
 
             # ---- title ----
-            if title_type == POST_TITLE_W_LINK:
+            if effective_title_type == POST_TITLE_W_LINK:
                 title_html = Bold(Underline(Link(title, param=self.link))).get_html()
-            elif title_type == POST_TITLE_NO_LINK:
+            elif effective_title_type == POST_TITLE_NO_LINK:
                 title_html = Bold(Underline(title)).get_html()
             else:  # NO_TITLE
                 title_html = None
@@ -521,22 +543,36 @@ class PostFormatter:
                                 via_type: TypeViaType,
                                 need_author: bool,
                                 message_type: TypeMessageType,
-                                message_style: TypeMessageStyle) -> str:
+                                message_style: TypeMessageStyle,
+                                title_body_spacing: int = 0,
+                                auto_title_from_body: int = -1) -> str:
         header, footer = self.get_post_header_and_footer(sub_title=sub_title,
                                                          tags=tags,
                                                          title_type=title_type,
                                                          via_type=via_type,
                                                          need_author=need_author,
                                                          message_type=message_type,
-                                                         message_style=message_style)
+                                                         message_style=message_style,
+                                                         title_body_spacing=title_body_spacing,
+                                                         auto_title_from_body=auto_title_from_body)
         content = self.parsed_html if message_type == NORMAL_MESSAGE else ''
+        sep = '\n\n' if title_body_spacing == FORCE_ENABLE else '\n'
         return (
                 header
-                + ('\n' if header and content else '')
+                + (sep if header and content else '')
                 + content
-                + ('\n' if (header or content) and footer else '')
+                + (sep if (header or content) and footer else '')
                 + footer
         )
+
+    def _get_title_from_body(self) -> Optional[str]:
+        plain_text = utils.unescape(self.html_tree.get_html(plain=True))
+        for line in plain_text.splitlines():
+            title = utils.stripAnySpace(line).strip()
+            if title:
+                return title[:128]
+        title = utils.stripAnySpace(plain_text).strip()
+        return title[:128] if title else None
 
     async def parse_html(self):
         parsed = await parse(html=self.html, feed_link=self.feed_link)

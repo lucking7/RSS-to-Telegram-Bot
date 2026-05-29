@@ -115,6 +115,19 @@ __configure_logging = partial(
 __configure_logging(level=colorlog.DEBUG if __bool_parser(os.environ.get('DEBUG')) else colorlog.INFO)
 logger = colorlog.getLogger('RSStT.env')
 
+
+def __int_parser(name: str, default_value: int, min_value: Optional[int] = None) -> int:
+    raw = os.environ.get(name)
+    try:
+        value = int(raw) if raw else default_value
+    except (TypeError, ValueError):
+        logger.critical(f'INVALID "{name}"! EXPECTED AN INTEGER, GOT: {raw}')
+        exit(1)
+    if min_value is not None and value < min_value:
+        logger.critical(f'INVALID "{name}"! EXPECTED >= {min_value}, GOT: {value}')
+        exit(1)
+    return value
+
 # ----- determine the environment -----
 user_home = os.path.expanduser('~')
 self_path = os.path.dirname(__file__)
@@ -254,8 +267,7 @@ TELEGRAPH_TOKEN: Final = __list_parser(os.environ.get('TELEGRAPH_TOKEN'))
 
 MULTIUSER: Final = __bool_parser(os.environ.get('MULTIUSER'), default_value=True)
 
-MONITOR_INTERVAL_SECS: Final = int(os.environ.get('MONITOR_INTERVAL_SECS') or 30)
-CRON_SECOND: Final = int(os.environ.get('CRON_SECOND') or 0) % 60
+MONITOR_INTERVAL_SECS: Final = __int_parser('MONITOR_INTERVAL_SECS', default_value=30, min_value=1)
 
 # ----- network config -----
 DEFAULT_PROXY: Final = os.environ.get('SOCKS_PROXY') or os.environ.get('socks_proxy') \

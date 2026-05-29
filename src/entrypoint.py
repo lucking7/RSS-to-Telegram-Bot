@@ -35,7 +35,7 @@ from functools import partial
 from itertools import chain
 from time import sleep
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from telethon import TelegramClient, events
 from telethon.errors import ApiIdPublishedFloodError, RPCError
 from telethon.tl import types
@@ -279,14 +279,15 @@ async def lazy():
 
 async def post():
     logger.info('Exiting gracefully...')
+    if scheduler.running:
+        scheduler.shutdown(wait=False)
+    monitor.close_sync()
     tasks = [
         asyncio.shield(loop.create_task(db.close())),
         loop.create_task(tgraph.close()),
         loop.create_task(bg.close()),
         loop.create_task(queued.close()),
     ]
-    if scheduler.running:
-        scheduler.shutdown(wait=False)
     if bot and bot.is_connected():
         tasks.append(bot.disconnect())
     res = await asyncio.gather(*tasks, return_exceptions=True)
@@ -344,7 +345,7 @@ def main():
 
         scheduler.add_job(
             func=monitor.run_periodic_task,
-            trigger=CronTrigger(second=f'*/{env.MONITOR_INTERVAL_SECS}', timezone='UTC'),
+            trigger=IntervalTrigger(seconds=env.MONITOR_INTERVAL_SECS, timezone='UTC'),
             max_instances=10,
             misfire_grace_time=10,
             id='monitor_periodic_task',

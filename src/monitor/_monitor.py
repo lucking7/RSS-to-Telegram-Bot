@@ -56,6 +56,8 @@ class Monitor(Singleton):
         # In the meantime, the deferring logic is implemented using this map.
         self._subtask_defer_map: Final[defaultdict[int, TaskState]] = defaultdict(lambda: TaskState.EMPTY)
         self._lock_up_period: int = 0  # in seconds
+        self._closed: bool = False
+        self._periodic_task_handles: Final[set[asyncio.TimerHandle]] = set()
 
         # update _lock_up_period on demand
         db.effective_utils.EffectiveOptions.add_set_callback('minimal_interval', self._update_lock_up_period_cb)
@@ -207,19 +209,39 @@ class Monitor(Singleton):
         return False  # not deferred
 
     def submit_feeds(self, feeds: Iterable[FEED_OR_ID], description: str = ''):
+        if self._closed:
+            return
         self._do_monitor_task_bg_sync(feeds, description)
 
     def submit_feed(self, feed: FEED_OR_ID, description: str = ''):
         self.submit_feeds((feed,), description)
 
+    def close_sync(self):
+        self._closed = True
+        for handle in self._periodic_task_handles:
+            handle.cancel()
+        self._periodic_task_handles.clear()
+
+    def _schedule_periodic_feeds(self, delay: int, feeds: list[int]):
+        def submit(handle: asyncio.TimerHandle):
+            self._periodic_task_handles.discard(handle)
+            self.submit_feeds(feeds, 'periodic task')
+
+        handle = env.loop.call_later(delay, lambda: submit(handle))
+        self._periodic_task_handles.add(handle)
+
     async def run_periodic_task(self):
+        if self._closed:
+            return
         self._stat.print_summary()
         Notifier.on_periodic_task()
-        feed_ids_set = db.effective_utils.EffectiveTasks.get_tasks()
+        feed_ids_set = db.effective_utils.EffectiveTasks.get_tasks(
+            monitor_interval_secs=env.MONITOR_INTERVAL_SECS,
+        )
         if not feed_ids_set:
             return
 
-        # Divide feed_ids into chunks and submit one chunk per second over the monitoring interval.
+        # Divide feed_ids into chunks and submit one chunk per second over the current scheduler tick.
         feed_ids: list[int] = list(feed_ids_set)
         feed_count = len(feed_ids)
         chunk_count = env.MONITOR_INTERVAL_SECS
@@ -234,7 +256,7 @@ class Monitor(Singleton):
         )):
             if count == 0:
                 break
-            env.loop.call_later(delay, self.submit_feeds, feed_ids[pos:pos + count], 'periodic task')
+            self._schedule_periodic_feeds(delay, feed_ids[pos:pos + count])
             pos += count
         assert pos == feed_count
 

@@ -94,6 +94,8 @@ class Post:
             display_entry_tags=sub.display_entry_tags if sub.display_entry_tags != -100 else user.display_entry_tags,
             style=sub.style if sub.style != -100 else user.style,
             display_media=sub.display_media if sub.display_media != -100 else user.display_media,
+            title_body_spacing=sub.title_body_spacing if sub.title_body_spacing != -100 else user.title_body_spacing,
+            auto_title_from_body=sub.auto_title_from_body if sub.auto_title_from_body != -100 else user.auto_title_from_body,
             silent=not (sub.notify if sub.notify != -100 else user.notify)
         )
 
@@ -110,6 +112,8 @@ class Post:
                                   display_entry_tags: int = -1,
                                   style: int = 0,
                                   display_media: int = 0,
+                                  title_body_spacing: int = 0,
+                                  auto_title_from_body: int = -1,
                                   silent: bool = False):
         """
         Send formatted post.
@@ -127,6 +131,8 @@ class Post:
         :param display_entry_tags: -1=disable, 1=force display
         :param style: 0=RSStT, 1=flowerss
         :param display_media: -1=disable, 0=enable
+        :param title_body_spacing: 0=compact, 1=blank line between title and body
+        :param auto_title_from_body: -1=disable, 1=derive title from body when title is absent
         :param silent: whether to send with notification sound
         """
         for _ in range(3):
@@ -142,7 +148,9 @@ class Post:
                                                                  display_title=display_title,
                                                                  display_entry_tags=display_entry_tags,
                                                                  style=style,
-                                                                 display_media=display_media)
+                                                                 display_media=display_media,
+                                                                 title_body_spacing=title_body_spacing,
+                                                                 auto_title_from_body=auto_title_from_body)
 
                 if formatted_post_tuple is None:
                     logger.debug(f'Post {self.link} is not sent to user {user_id} due to empty content')

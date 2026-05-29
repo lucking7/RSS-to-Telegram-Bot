@@ -37,7 +37,9 @@ SUB_OPTIONS_EXHAUSTIVE_VALUES = {
     "display_via": (0, 1, -3, -1, -4, -2),
     "display_title": (0, 1, -1),
     "display_entry_tags": (1, -1),
-    "style": (0, 1)
+    "style": (0, 1),
+    "title_body_spacing": (0, 1),
+    "auto_title_from_body": (-1, 1),
 }
 
 FALLBACK_TO_USER_DEFAULT_EMOJI = "↩️"
@@ -76,7 +78,8 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
     is_user = isinstance(sub_or_user, db.User)
     if is_user:
         interval_d = length_limit_d = notify_d = send_mode_d = link_preview_d = display_media_d = display_author_d = \
-            display_via_d = display_title_d = display_entry_tags_d = style_d = False
+            display_via_d = display_title_d = display_entry_tags_d = style_d = \
+            title_body_spacing_d = auto_title_from_body_d = False
         all_default = None
     else:
         if not isinstance(sub_or_user.user, db.User):
@@ -92,8 +95,11 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
         display_title_d = sub_or_user.display_title == -100
         display_entry_tags_d = sub_or_user.display_entry_tags == -100
         style_d = sub_or_user.style == -100
+        title_body_spacing_d = sub_or_user.title_body_spacing == -100
+        auto_title_from_body_d = sub_or_user.auto_title_from_body == -100
         all_default = all((interval_d, length_limit_d, notify_d, send_mode_d, link_preview_d, display_media_d,
-                           display_author_d, display_via_d, display_title_d, display_entry_tags_d, style_d))
+                           display_author_d, display_via_d, display_title_d, display_entry_tags_d, style_d,
+                           title_body_spacing_d, auto_title_from_body_d))
     interval = sub_or_user.user.interval if interval_d else sub_or_user.interval
     length_limit = sub_or_user.user.length_limit if length_limit_d else sub_or_user.length_limit
     notify = sub_or_user.user.notify if notify_d else sub_or_user.notify
@@ -105,6 +111,8 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
     display_title = sub_or_user.user.display_title if display_title_d else sub_or_user.display_title
     display_entry_tags = sub_or_user.user.display_entry_tags if display_entry_tags_d else sub_or_user.display_entry_tags
     style = sub_or_user.user.style if style_d else sub_or_user.style
+    title_body_spacing = sub_or_user.user.title_body_spacing if title_body_spacing_d else sub_or_user.title_body_spacing
+    auto_title_from_body = sub_or_user.user.auto_title_from_body if auto_title_from_body_d else sub_or_user.auto_title_from_body
     buttons = (
         (
             Button.inline(
@@ -213,6 +221,30 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
                     f'set_default=display_entry_tags{tail}'
                     if is_user
                     else f'set={sub_or_user.id},display_entry_tags|{page}{tail}'
+                ),
+            ),
+        ),
+        (
+            Button.inline(
+                f"{i18n[lang]['title_body_spacing']}: "
+                + (FALLBACK_TO_USER_DEFAULT_EMOJI if title_body_spacing_d else '')
+                + i18n[lang][f'title_body_spacing_{title_body_spacing}'],
+                data=(
+                    f'set_default=title_body_spacing{tail}'
+                    if is_user
+                    else f'set={sub_or_user.id},title_body_spacing|{page}{tail}'
+                ),
+            ),
+        ),
+        (
+            Button.inline(
+                f"{i18n[lang]['auto_title_from_body']}: "
+                + (FALLBACK_TO_USER_DEFAULT_EMOJI if auto_title_from_body_d else '')
+                + i18n[lang][f'auto_title_from_body_{auto_title_from_body}'],
+                data=(
+                    f'set_default=auto_title_from_body{tail}'
+                    if is_user
+                    else f'set={sub_or_user.id},auto_title_from_body|{page}{tail}'
                 ),
             ),
         ),

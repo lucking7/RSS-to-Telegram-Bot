@@ -210,9 +210,14 @@ async def callback_reset(
     if sub.interval is not None:
         sub.interval = None
         update_interval_flag = True
+    reset_fields = (
+        'interval', 'length_limit', 'notify', 'send_mode', 'link_preview', 'display_author', 'display_media',
+        'display_title', 'display_entry_tags', 'display_via', 'style', 'title_body_spacing', 'auto_title_from_body',
+    )
     sub.length_limit = sub.notify = sub.send_mode = sub.link_preview = sub.display_author = sub.display_media = \
-        sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = -100
-    await sub.save()
+        sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = \
+        sub.title_body_spacing = sub.auto_title_from_body = -100
+    await sub.save(update_fields=reset_fields)
     if update_interval_flag:
         await inner.utils.update_interval(sub)
     info = await inner.customization.get_sub_info(sub, lang, additional_guide=True)
@@ -259,12 +264,13 @@ async def callback_reset_all(
             tasks.append(inner.utils.update_interval(sub))
         sub.interval = None
         sub.length_limit = sub.notify = sub.send_mode = sub.link_preview = sub.display_author = sub.display_media = \
-            sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = -100
+            sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = \
+            sub.title_body_spacing = sub.auto_title_from_body = -100
     await db.Sub.bulk_update(
         subs,
         (
             'interval', 'length_limit', 'notify', 'send_mode', 'link_preview', 'display_author', 'display_media',
-            'display_title', 'display_entry_tags', 'display_via', 'style',
+            'display_title', 'display_entry_tags', 'display_via', 'style', 'title_body_spacing', 'auto_title_from_body',
         )
     )
     for task in tasks:
