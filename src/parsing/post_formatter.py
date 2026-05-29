@@ -532,9 +532,9 @@ class PostFormatter:
         content = self.parsed_html if message_type == NORMAL_MESSAGE else ''
         return (
                 header
-                + ('\n\n' if header and content else '')
+                + ('\n' if header and content else '')
                 + content
-                + ('\n\n' if (header or content) and footer else '')
+                + ('\n' if (header or content) and footer else '')
                 + footer
         )
 
