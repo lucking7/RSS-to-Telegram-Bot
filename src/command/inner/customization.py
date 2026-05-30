@@ -73,7 +73,8 @@ async def get_sub_info(sub: db.Sub,
 async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
                                     lang: Optional[str] = None,
                                     page: Optional[int] = None,
-                                    tail: str = '') -> tuple[tuple[KeyboardButtonCallback, ...], ...]:
+                                    tail: str = '',
+                                    show_high_frequency_controls: bool = False) -> tuple[tuple[KeyboardButtonCallback, ...], ...]:
     page = page or 1
     is_user = isinstance(sub_or_user, db.User)
     if is_user:
@@ -81,9 +82,10 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
             display_via_d = display_title_d = display_entry_tags_d = style_d = \
             title_body_spacing_d = auto_title_from_body_d = False
         all_default = None
+        is_high_frequency_feed = False
     else:
-        if not isinstance(sub_or_user.user, db.User):
-            await sub_or_user.fetch_related('user')
+        if not isinstance(sub_or_user.user, db.User) or not isinstance(sub_or_user.feed, db.Feed):
+            await sub_or_user.fetch_related('user', 'feed')
         interval_d = sub_or_user.interval is None
         length_limit_d = sub_or_user.length_limit == -100
         notify_d = sub_or_user.notify == -100
@@ -100,6 +102,7 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
         all_default = all((interval_d, length_limit_d, notify_d, send_mode_d, link_preview_d, display_media_d,
                            display_author_d, display_via_d, display_title_d, display_entry_tags_d, style_d,
                            title_body_spacing_d, auto_title_from_body_d))
+        is_high_frequency_feed = db.effective_utils.is_high_frequency_feed(sub_or_user.feed.link)
     interval = sub_or_user.user.interval if interval_d else sub_or_user.interval
     length_limit = sub_or_user.user.length_limit if length_limit_d else sub_or_user.length_limit
     notify = sub_or_user.user.notify if notify_d else sub_or_user.notify
@@ -148,6 +151,15 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
                 ),
             ),
         ),
+        (
+            Button.inline(
+                f"{i18n[lang]['high_frequency_monitor_interval']}: "
+                + formatting_time(seconds=db.EffectiveOptions.high_frequency_monitor_interval_secs),
+                data=f'set={sub_or_user.id},high_frequency_interval|{page}{tail}',
+            ),
+        )
+        if show_high_frequency_controls and is_high_frequency_feed
+        else None,
         (
             Button.inline(
                 f"{i18n[lang]['notification']}: "
@@ -323,6 +335,38 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
     return tuple(filter(None, buttons))
 
 
+def get_high_frequency_interval_choices() -> tuple[int, ...]:
+    choices = (env.MONITOR_INTERVAL_SECS, 30, 60, 120, 300)
+    return tuple(dict.fromkeys(interval for interval in choices if interval >= env.MONITOR_INTERVAL_SECS))
+
+
+async def get_set_high_frequency_interval_buttons(sub: db.Sub,
+                                                  lang: Optional[str] = None,
+                                                  page: Optional[int] = None,
+                                                  tail: str = '') -> tuple[tuple[KeyboardButtonCallback, ...], ...]:
+    page = page or 1
+    buttons = (
+            arrange_grid(
+                to_arrange=(
+                    Button.inline(
+                        formatting_time(seconds=interval_secs),
+                        data=f'set={sub.id},high_frequency_interval,{interval_secs}|{page}{tail}',
+                    )
+                    for interval_secs in get_high_frequency_interval_choices()
+                ),
+                columns=3,
+            )
+            +
+            ((
+                 Button.inline(
+                     f'< {i18n[lang]["back"]}',
+                     data=f'set={sub.id}|{page}{tail}',
+                 ),
+             ),)
+    )
+    return tuple(filter(None, buttons))
+
+
 async def get_set_interval_buttons(sub_or_user: Union[db.Sub, int],
                                    lang: Optional[str] = None,
                                    page: Optional[int] = None,
@@ -438,6 +482,15 @@ async def get_set_length_limit_buttons(sub_or_user: Union[db.Sub, db.User],
              ),)
     )
     return tuple(filter(None, buttons))
+
+
+async def set_high_frequency_interval(interval_secs: int) -> int:
+    interval_secs = max(env.MONITOR_INTERVAL_SECS, interval_secs)
+    await db.EffectiveOptions.set('high_frequency_monitor_interval_secs', interval_secs)
+    feeds = await db.Feed.filter(state=1)
+    for feed in feeds:
+        env.loop.create_task(update_interval(feed))
+    return db.EffectiveOptions.high_frequency_monitor_interval_secs
 
 
 async def set_interval(sub_or_user: Union[db.Sub, db.User], interval: int) -> Union[db.Sub, db.User]:

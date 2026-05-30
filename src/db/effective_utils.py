@@ -19,6 +19,7 @@ from typing import Optional, Any, NoReturn, Union
 from typing_extensions import Final
 from collections.abc import Callable
 
+import re
 from collections import defaultdict
 from contextlib import suppress
 from math import ceil
@@ -54,6 +55,8 @@ class __EffectiveOptions:
         self.__default_options: dict[str, Union[str, int]] = {
             "default_interval": 10,
             "minimal_interval": 5,
+            "high_frequency_monitor_interval_secs": env.HIGH_FREQUENCY_MONITOR_INTERVAL_SECS,
+            "high_frequency_feed_patterns": ";".join(env.HIGH_FREQUENCY_FEED_PATTERNS),
             "user_sub_limit": -1,
             "channel_or_group_sub_limit": -1,
             "sub_limit_reached_message": "",
@@ -77,6 +80,14 @@ class __EffectiveOptions:
         return self.get("minimal_interval")
 
     @property
+    def high_frequency_monitor_interval_secs(self) -> int:
+        return max(1, self.get("high_frequency_monitor_interval_secs"))
+
+    @property
+    def high_frequency_feed_patterns(self) -> str:
+        return self.get("high_frequency_feed_patterns")
+
+    @property
     def user_sub_limit(self) -> int:
         return self.get("user_sub_limit")
 
@@ -98,11 +109,16 @@ class __EffectiveOptions:
             return "" if value_type is str else None
 
         try:
-            return value_type(value)
+            value = value_type(value)
         except (ValueError, TypeError) as e:
             if ignore_type_error:
                 return self.__default_options[key]
             raise TypeError(f"Option value must be of type {value_type}") from e
+        if key == "high_frequency_monitor_interval_secs" and value < 1:
+            if ignore_type_error:
+                return self.__default_options[key]
+            raise TypeError("Option value must be greater than or equal to 1")
+        return value
 
     def get(self, key: str) -> Union[str, int]:
         """
@@ -164,11 +180,26 @@ class __EffectiveOptions:
 EffectiveOptions = __EffectiveOptions()
 
 
+def get_high_frequency_feed_patterns() -> tuple[str, ...]:
+    try:
+        patterns = EffectiveOptions.high_frequency_feed_patterns
+    except RuntimeError:
+        return env.HIGH_FREQUENCY_FEED_PATTERNS
+    return tuple(filter(None, re.split(r'[\s,;，；]+', patterns.strip()))) if patterns else ()
+
+
+def get_high_frequency_monitor_interval_secs() -> int:
+    try:
+        return EffectiveOptions.high_frequency_monitor_interval_secs
+    except RuntimeError:
+        return env.HIGH_FREQUENCY_MONITOR_INTERVAL_SECS
+
+
 def is_high_frequency_feed(link: Optional[str]) -> bool:
     if not link:
         return False
     normalized_link = link.lower()
-    return any(pattern.lower() in normalized_link for pattern in env.HIGH_FREQUENCY_FEED_PATTERNS)
+    return any(pattern.lower() in normalized_link for pattern in get_high_frequency_feed_patterns())
 
 
 class EffectiveTasks:
@@ -222,7 +253,7 @@ class EffectiveTasks:
     def get_interval_secs_for_feed(cls, interval: int, link: Optional[str] = None) -> int:
         interval_secs = (interval or EffectiveOptions.default_interval) * 60
         if is_high_frequency_feed(link):
-            return min(interval_secs, env.HIGH_FREQUENCY_MONITOR_INTERVAL_SECS)
+            return min(interval_secs, get_high_frequency_monitor_interval_secs())
         return interval_secs
 
     @classmethod

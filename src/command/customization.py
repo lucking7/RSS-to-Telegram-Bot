@@ -101,6 +101,8 @@ async def callback_set(
         await event.edit(i18n[lang]['subscription_not_exist'])
         return
 
+    is_manager = event.sender_id in env.MANAGER
+
     if (
             action is None
             or
@@ -108,11 +110,24 @@ async def callback_set(
                     action in {'interval', 'length_limit'}
                     and (isinstance(param, int) or param == 'default')
             )
+            or (
+                    action == 'high_frequency_interval'
+                    and not set_user_default
+                    and isinstance(param, int)
+            )
             or (action == 'activate' and not set_user_default)
             or action in inner.customization.SUB_OPTIONS_EXHAUSTIVE_VALUES
     ):
         if action == 'interval' and (isinstance(param, int) or param == 'default'):
             await inner.customization.set_interval(sub_or_user, param if param != 'default' else -100)
+        elif action == 'high_frequency_interval' and not set_user_default and isinstance(param, int):
+            if not is_manager:
+                await event.answer(i18n[lang]['permission_denied_not_bot_manager'], alert=True)
+                return
+            if not db.effective_utils.is_high_frequency_feed(sub_or_user.feed.link):
+                await event.answer(i18n[lang]['high_frequency_feed_not_whitelisted'], alert=True)
+                return
+            await inner.customization.set_high_frequency_interval(param)
         elif action == 'length_limit' and (isinstance(param, int) or param == 'default'):
             await inner.customization.set_length_limit(sub_or_user, param if param != 'default' else -100)
         elif action == 'activate' and not set_user_default:
@@ -141,8 +156,23 @@ async def callback_set(
         ))
         buttons = await inner.customization.get_customization_buttons(
             sub_or_user, lang=lang, page=page, tail=callback_tail,
+            show_high_frequency_controls=is_manager,
         )
         await event.edit(info, buttons=buttons, parse_mode='html', link_preview=False)
+        return
+
+    if action == 'high_frequency_interval' and not set_user_default:
+        if not is_manager:
+            await event.answer(i18n[lang]['permission_denied_not_bot_manager'], alert=True)
+            return
+        if not db.effective_utils.is_high_frequency_feed(sub_or_user.feed.link):
+            await event.answer(i18n[lang]['high_frequency_feed_not_whitelisted'], alert=True)
+            return
+        msg = i18n[lang]['set_high_frequency_interval_prompt']
+        buttons = await inner.customization.get_set_high_frequency_interval_buttons(
+            sub_or_user, lang=lang, page=page, tail=callback_tail,
+        )
+        await event.edit(msg, buttons=buttons)
         return
 
     if action == 'interval':
@@ -221,7 +251,13 @@ async def callback_reset(
     if update_interval_flag:
         await inner.utils.update_interval(sub)
     info = await inner.customization.get_sub_info(sub, lang, additional_guide=True)
-    buttons = await inner.customization.get_customization_buttons(sub, lang=lang, page=page, tail=callback_tail)
+    buttons = await inner.customization.get_customization_buttons(
+        sub,
+        lang=lang,
+        page=page,
+        tail=callback_tail,
+        show_high_frequency_controls=event.sender_id in env.MANAGER,
+    )
     await event.edit(info, buttons=buttons, parse_mode='html', link_preview=False)
 
 

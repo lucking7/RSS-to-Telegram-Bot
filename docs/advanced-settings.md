@@ -51,8 +51,8 @@
 | `ERROR_LOGGING_CHAT`          | Chat (user/channel/group) ID for error logging.                             | `-1001234567890`                              | The first user ID in `MANAGER`                  |
 | `MULTIUSER`                   | Enable multi-user feature or not?                                           | `0`                                           | `1`                                             |
 | `MONITOR_INTERVAL_SECS`       | Feed monitoring scheduler tick interval in seconds. Subscription intervals remain minute-based. | `30`                       | `30`                                            |
-| `HIGH_FREQUENCY_MONITOR_INTERVAL_SECS` | Monitoring interval in seconds for feeds whose URL matches `HIGH_FREQUENCY_FEED_PATTERNS`. | `30`                       | `30`                                            |
-| `HIGH_FREQUENCY_FEED_PATTERNS` | URL substrings for feeds that need second-level monitoring.                 | `/tencent/finance/newslist;/kaipanla/news`    | Tencent finance, Kaipanla, Longbridge flash, Jin10, Sina news |
+| `HIGH_FREQUENCY_MONITOR_INTERVAL_SECS` | Initial monitoring interval in seconds for high-frequency feeds. It can be changed later with `/set_option high_frequency_monitor_interval_secs`. | `30`                       | `30`                                            |
+| `HIGH_FREQUENCY_FEED_PATTERNS` | Initial URL substrings for feeds that need second-level monitoring. It can be changed later with `/set_option high_frequency_feed_patterns`. | `/tencent/finance/newslist;/kaipanla/news`    | Tencent finance, Kaipanla, Longbridge flash, Jin10, Sina news |
 | `IMG_RELAY_SERVER`            | Media relay server (https://github.com/Rongronggg9/rsstt-img-relay) URL     | `https://wsrv.nl/?url=`                       | `https://rsstt-img-relay.rongrong.workers.dev/` |
 | `IMAGES_WESERV_NL`            | https://github.com/weserv/images instance                                   | `https://t0.nl/`                              | `https://wsrv.nl/`                              |
 | `DATABASE_URL`                | Database URL [^7]                                                           | `postgres://user:pass@example.com:5432/table` | `sqlite:/path/to/config/db.sqlite3`             |
@@ -71,6 +71,8 @@
 |------------------------------|------------------------------------------------------------|---------------------------------|------------------|
 | `default_interval`           | Default feed monitoring interval [^10]                     | `15`                            | `10`             |
 | `minimal_interval`           | Minimal feed monitoring interval [^11] [^12]               | `10`                            | `5`              |
+| `high_frequency_monitor_interval_secs` | Monitoring interval in seconds for feeds whose URL matches `high_frequency_feed_patterns`. | `30`       | `30`             |
+| `high_frequency_feed_patterns` | URL substrings for feeds that need second-level monitoring. Separate multiple patterns with `;`. | `/tencent/finance/newslist;/kaipanla/news` | Tencent finance, Kaipanla, Longbridge flash, Jin10, Sina news |
 | `user_sub_limit`             | Subscription number limit for ordinary user [^13] [^12]    | `150`                           | `-1` (unlimited) |
 | `channel_or_group_sub_limit` | Subscription number limit for channel or group [^13] [^12] | `150`                           | `-1` (unlimited) |
 | `sub_limit_reached_message`  | Additional message attached to the limit reached warning   | `https://t.me/RSStT_Channel/58` |                  |

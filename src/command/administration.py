@@ -68,7 +68,7 @@ async def cmd_set_option(event: TypeEventMsgHint, *_, lang: Optional[str] = None
 
     logger.info(f"Set option {key} to {value}")
 
-    if key == 'default_interval':
+    if key in {'default_interval', 'high_frequency_monitor_interval_secs', 'high_frequency_feed_patterns'}:
         all_feeds = await db.Feed.filter(state=1)
         for feed in all_feeds:
             env.loop.create_task(inner.utils.update_interval(feed))
