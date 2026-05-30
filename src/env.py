@@ -283,6 +283,10 @@ HIGH_FREQUENCY_FEED_PATTERNS: Final = tuple(
         '/kaipanla/zt',
         '/longbridge/flash',
         '/jin10',
+        '/sina/724',
+        '/sina/finance/724',
+        '/sina/rollnews',
+        '/sina/finance/rollnews',
     )
 )
 
