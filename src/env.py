@@ -268,6 +268,23 @@ TELEGRAPH_TOKEN: Final = __list_parser(os.environ.get('TELEGRAPH_TOKEN'))
 MULTIUSER: Final = __bool_parser(os.environ.get('MULTIUSER'), default_value=True)
 
 MONITOR_INTERVAL_SECS: Final = __int_parser('MONITOR_INTERVAL_SECS', default_value=30, min_value=1)
+HIGH_FREQUENCY_MONITOR_INTERVAL_SECS: Final = __int_parser(
+    'HIGH_FREQUENCY_MONITOR_INTERVAL_SECS',
+    default_value=30,
+    min_value=1,
+)
+HIGH_FREQUENCY_FEED_PATTERNS: Final = tuple(
+    __list_parser(os.environ.get('HIGH_FREQUENCY_FEED_PATTERNS'))
+    or (
+        '/tencent/finance/newslist',
+        '/kaipanla/news',
+        '/kaipanla/dapanzhibo',
+        '/kaipanla/review',
+        '/kaipanla/zt',
+        '/longbridge/flash',
+        '/jin10',
+    )
+)
 
 # ----- network config -----
 DEFAULT_PROXY: Final = os.environ.get('SOCKS_PROXY') or os.environ.get('socks_proxy') \

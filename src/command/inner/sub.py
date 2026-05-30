@@ -106,7 +106,7 @@ async def sub(user_id: int,
                 feed.last_modified = wr.last_modified
                 feed.entry_hashes = list(calculate_update(old_hashes=None, entries=rss_d.entries)[0])
                 await feed.save()  # now we get the id
-                db.effective_utils.EffectiveTasks.update(feed.id)
+                db.effective_utils.EffectiveTasks.update(feed.id, link=feed.link)
 
         sub_title = sub_title if feed.title != sub_title else None
 

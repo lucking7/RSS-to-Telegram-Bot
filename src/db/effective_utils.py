@@ -25,7 +25,7 @@ from math import ceil
 from random import shuffle
 
 from . import models
-from .. import log
+from .. import env, log
 
 logger = log.getLogger('RSStT.db')
 
@@ -164,17 +164,25 @@ class __EffectiveOptions:
 EffectiveOptions = __EffectiveOptions()
 
 
+def is_high_frequency_feed(link: Optional[str]) -> bool:
+    if not link:
+        return False
+    normalized_link = link.lower()
+    return any(pattern.lower() in normalized_link for pattern in env.HIGH_FREQUENCY_FEED_PATTERNS)
+
+
 class EffectiveTasks:
     """
     EffectiveTasks class.
 
     A task dispatcher.
     """
-    __task_buckets: dict[int, "EffectiveTasks"] = {}  # key: interval, value: EffectiveTasks
-    __all_tasks: dict[int, int] = {}  # key: id, value: interval
+    __task_buckets: dict[int, "EffectiveTasks"] = {}  # key: interval seconds, value: EffectiveTasks
+    __all_tasks: dict[int, int] = {}  # key: id, value: interval seconds
+    __feed_intervals: dict[int, int] = {}  # key: id, value: interval minutes
 
-    def __init__(self, interval: int) -> NoReturn:
-        self.interval: Final[int] = interval
+    def __init__(self, interval_secs: int) -> NoReturn:
+        self.interval_secs: Final[int] = interval_secs
         self.__all_feeds: set[int] = set()
         self.__pending_feeds: list[int] = []  # use a list here to make randomization easier
         # self.__checked_feeds: set[int] = set()
@@ -196,11 +204,12 @@ class EffectiveTasks:
         """
         if not cls.__task_buckets or flush:
             cls.__all_tasks = {}
+            cls.__feed_intervals = {}
             cls.__task_buckets = {}
-            feeds = await models.Feed.filter(state=1).values('id', 'interval')
+            feeds = await models.Feed.filter(state=1).values('id', 'interval', 'link')
             default_interval = EffectiveOptions.default_interval
             for feed in feeds:
-                cls.update(feed_id=feed['id'], interval=feed['interval'] or default_interval)
+                cls.update(feed_id=feed['id'], interval=feed['interval'] or default_interval, link=feed['link'])
 
     def __update(self, feed_id: int):
         self.__all_feeds.add(feed_id)
@@ -210,24 +219,34 @@ class EffectiveTasks:
         #     self.__pending_feeds.append(feed_id)
 
     @classmethod
-    def update(cls, feed_id: int, interval: int = None) -> NoReturn:
+    def get_interval_secs_for_feed(cls, interval: int, link: Optional[str] = None) -> int:
+        interval_secs = (interval or EffectiveOptions.default_interval) * 60
+        if is_high_frequency_feed(link):
+            return min(interval_secs, env.HIGH_FREQUENCY_MONITOR_INTERVAL_SECS)
+        return interval_secs
+
+    @classmethod
+    def update(cls, feed_id: int, interval: int = None, link: Optional[str] = None) -> NoReturn:
         """
         Update or add a task.
 
         :param feed_id: the id of the feed in the task
-        :param interval: the interval of the task
+        :param interval: the interval of the task in minutes
+        :param link: feed URL, used to apply high-frequency monitoring overrides
         """
         interval = interval or EffectiveOptions.default_interval
+        interval_secs = cls.get_interval_secs_for_feed(interval, link)
         if feed_id in cls.__all_tasks:  # if already have a task
-            if cls.__all_tasks[feed_id] == interval:  # no need to update
+            if cls.__all_tasks[feed_id] == interval_secs and cls.__feed_intervals.get(feed_id) == interval:
                 return
             cls.delete(feed_id, _preserve_in_all_tasks=True)  # delete the old one
 
-        if interval not in cls.__task_buckets:  # if lack of bucket
-            cls.__task_buckets[interval] = cls(interval)  # create one
+        if interval_secs not in cls.__task_buckets:  # if lack of bucket
+            cls.__task_buckets[interval_secs] = cls(interval_secs)  # create one
 
-        cls.__all_tasks[feed_id] = interval  # log the new task
-        cls.__task_buckets[interval].__update(feed_id)  # update task
+        cls.__all_tasks[feed_id] = interval_secs  # log the new task
+        cls.__feed_intervals[feed_id] = interval
+        cls.__task_buckets[interval_secs].__update(feed_id)  # update task
 
     def __delete(self, feed_id: int) -> NoReturn:
         self.__ignore_key_or_value_error(self.__all_feeds.remove, feed_id)
@@ -242,11 +261,13 @@ class EffectiveTasks:
         :param _preserve_in_all_tasks: for internal use
         """
         with suppress(KeyError):
-            old_interval = cls.__all_tasks[feed_id]
-            cls.__task_buckets[old_interval].__delete(feed_id)
+            old_interval_secs = cls.__all_tasks[feed_id]
+            cls.__task_buckets[old_interval_secs].__delete(feed_id)
 
             if not _preserve_in_all_tasks:
                 del cls.__all_tasks[feed_id]
+                with suppress(KeyError):
+                    del cls.__feed_intervals[feed_id]
 
     @classmethod
     def exist(cls, feed_id: int) -> bool:
@@ -266,12 +287,22 @@ class EffectiveTasks:
         :param feed_id: the id of the feed in the task
         :return `int`: the interval of the task, or `None` if task do not exist
         """
+        return cls.__feed_intervals[feed_id] if cls.exist(feed_id) else None
+
+    @classmethod
+    def get_interval_secs(cls, feed_id: int) -> Optional[int]:
+        """
+        Get the effective interval in seconds.
+
+        :param feed_id: the id of the feed in the task
+        :return `int`: the effective interval seconds, or `None` if task do not exist
+        """
         return cls.__all_tasks[feed_id] if cls.exist(feed_id) else None
 
     def __get_tasks(self, monitor_interval_secs: int = 60) -> set[int]:
         if len(self.__all_feeds) == 0:
             return set()  # nothing to run
-        run_count_limit = max(1, ceil(self.interval * 60 / monitor_interval_secs))
+        run_count_limit = max(1, ceil(self.interval_secs / monitor_interval_secs))
         if self.__run_count == 0:
             self.__pending_feeds = list(self.__all_feeds)
             shuffle(self.__pending_feeds)  # randomize

@@ -301,8 +301,12 @@ async def update_interval(feed: Union[db.Feed, db.Sub, int]):
         feed_update_flag = True
     if feed_update_flag:
         await feed.save()
-    if db.effective_utils.EffectiveTasks.get_interval(feed.id) != new_interval:
-        db.effective_utils.EffectiveTasks.update(feed.id, new_interval)
+    new_interval_secs = db.effective_utils.EffectiveTasks.get_interval_secs_for_feed(new_interval, feed.link)
+    if (
+            db.effective_utils.EffectiveTasks.get_interval(feed.id) != new_interval
+            or db.effective_utils.EffectiveTasks.get_interval_secs(feed.id) != new_interval_secs
+    ):
+        db.effective_utils.EffectiveTasks.update(feed.id, new_interval, link=feed.link)
 
 
 async def list_sub(user_id: int, *args, **kwargs) -> list[db.Sub]:
