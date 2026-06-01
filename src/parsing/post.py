@@ -125,7 +125,7 @@ class Post:
         :param length_limit: Telegraph length limit, valid when send_mode==0. If exceeded, send via Telegraph; If is 0,
             send via Telegraph when a post cannot be sent in a single message
         :param link_preview: 0=auto, 1=force enable
-        :param display_author: -1=disable, 0=auto, 1=force display
+        :param display_author: -1=disable, 0=auto, 1=force display, 2=force display at body end
         :param display_via: -2=completely disable, -1=disable but display link, 0=auto, 1=force display
         :param display_title: -1=disable, 0=auto, 1=force display
         :param display_entry_tags: -1=disable, 1=force display

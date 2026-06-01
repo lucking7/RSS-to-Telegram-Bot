@@ -115,6 +115,7 @@
         "display_author_-1": "Disable",
         "display_author_0": "Auto",
         "display_author_1": "Enable",
+        "display_author_2": "Enable (at the end of body)",
         "display_via": "Source",
         "display_via_-4": "No feed title, bare URL at the end",
         "display_via_-3": "No feed title, link displayed as post title",

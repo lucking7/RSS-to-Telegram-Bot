@@ -115,6 +115,7 @@
         "display_author_-1": "禁用",
         "display_author_0": "自动",
         "display_author_1": "启用",
+        "display_author_2": "启用 (正文末尾)",
         "display_via": "来源",
         "display_via_-4": "无源标题，裸 URL 置于结尾",
         "display_via_-3": "无源标题，链接显示为文章标题",

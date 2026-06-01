@@ -33,6 +33,7 @@ from ..web.media import construct_weserv_url_convert_to_2560
 AUTO: Final = 0
 DISABLE: Final = -1
 FORCE_DISPLAY: Final = 1
+FORCE_DISPLAY_INLINE: Final = 2
 FORCE_ENABLE: Final = 1
 FORCE_LINK: Final = -1
 FORCE_TELEGRAPH: Final = 1
@@ -151,7 +152,7 @@ class PostFormatter:
         :param length_limit: Telegraph length limit, valid when send_mode==0. If exceeded, send via Telegraph; If is 0,
             send via Telegraph when a post cannot be sent in a single message
         :param link_preview: 0=auto, 1=force enable
-        :param display_author: -1=disable, 0=auto, 1=force display
+        :param display_author: -1=disable, 0=auto, 1=force display, 2=force display at body end
         :param display_via: -3=disable but display link as post title, -2=completely disable,
             -1=disable but display link at the end, 0=feed title and link, 1=feed title and link as post title
         :param display_title: -1=disable, 0=auto, 1=force display
@@ -165,7 +166,7 @@ class PostFormatter:
         assert send_mode in {FORCE_LINK, AUTO, FORCE_TELEGRAPH, FORCE_MESSAGE}
         assert isinstance(length_limit, int) and length_limit >= 0
         assert link_preview in {DISABLE, AUTO, FORCE_ENABLE}
-        assert display_author in {DISABLE, AUTO, FORCE_DISPLAY}
+        assert display_author in {DISABLE, AUTO, FORCE_DISPLAY, FORCE_DISPLAY_INLINE}
         assert display_via in {NO_FEED_TITLE_BUT_LINK_AS_POST_TITLE, COMPLETELY_DISABLE, NO_FEED_TITLE_BUT_TEXT_LINK,
                                NO_FEED_TITLE_BUT_BARE_LINK, FEED_TITLE_AND_LINK, FEED_TITLE_AND_LINK_AS_POST_TITLE}
         assert display_title in {DISABLE, AUTO, FORCE_DISPLAY}
@@ -235,7 +236,7 @@ class PostFormatter:
 
         # ---- determine need_author ----
         need_author = display_author != DISABLE and self.author and (
-                display_author == FORCE_DISPLAY
+                display_author in {FORCE_DISPLAY, FORCE_DISPLAY_INLINE}
                 or (
                         display_author == AUTO
                         and (
@@ -285,7 +286,8 @@ class PostFormatter:
                                                            message_type=NORMAL_MESSAGE,
                                                            message_style=message_style,
                                                            title_body_spacing=title_body_spacing,
-                                                           auto_title_from_body=auto_title_from_body)
+                                                           auto_title_from_body=auto_title_from_body,
+                                                           display_author=display_author)
             normal_msg_len = get_plain_text_length(normal_msg_post)
             if (
                     (
@@ -342,7 +344,7 @@ class PostFormatter:
         # ---- determine need_link_preview ----
         need_link_preview = link_preview != DISABLE and (link_preview == FORCE_ENABLE or message_type != NORMAL_MESSAGE)
 
-        option_hash = f'{sub_title}|{tags}|{title_type}|{via_type}|{need_author}|{message_type}|{message_style}|' \
+        option_hash = f'{sub_title}|{tags}|{title_type}|{via_type}|{need_author}|{display_author}|{message_type}|{message_style}|' \
                       f'{title_body_spacing}|{auto_title_from_body}'
         self.__param_to_option_cache[param_hash] = option_hash
 
@@ -378,7 +380,8 @@ class PostFormatter:
                                                 message_type=message_type,
                                                 message_style=message_style,
                                                 title_body_spacing=title_body_spacing,
-                                                auto_title_from_body=auto_title_from_body)
+                                                auto_title_from_body=auto_title_from_body,
+                                                display_author=display_author)
             self.__post_bucket[option_hash] = post, need_media, need_link_preview
             return post, need_media, need_link_preview
 
@@ -558,17 +561,28 @@ class PostFormatter:
                                 message_type: TypeMessageType,
                                 message_style: TypeMessageStyle,
                                 title_body_spacing: int = 0,
-                                auto_title_from_body: int = -1) -> str:
+                                auto_title_from_body: int = -1,
+                                display_author: int = 0) -> str:
         header, footer = self.get_post_header_and_footer(sub_title=sub_title,
                                                          tags=tags,
                                                          title_type=title_type,
                                                          via_type=via_type,
-                                                         need_author=need_author,
+                                                         need_author=need_author and display_author != FORCE_DISPLAY_INLINE,
                                                          message_type=message_type,
                                                          message_style=message_style,
                                                          title_body_spacing=title_body_spacing,
                                                          auto_title_from_body=auto_title_from_body)
         content = self.parsed_html if message_type == NORMAL_MESSAGE else ''
+        if display_author == FORCE_DISPLAY_INLINE and need_author and self.author:
+            author_inline_html = Text(f'({self.author})').get_html()
+            if content:
+                content = content + ' ' + author_inline_html
+            else:
+                footer = (
+                        (footer or '')
+                        + (' ' if footer else '')
+                        + author_inline_html
+                )
         sep = '\n' if title_body_spacing == 1 else '\n\n'
         return (
                 header

@@ -115,6 +115,7 @@
         "display_author_-1": "停用",
         "display_author_0": "自動",
         "display_author_1": "啟用",
+        "display_author_2": "啟用 (正文末尾)",
         "display_via": "來源",
         "display_via_-4": "無源標題，裸 URL 附於尾部",
         "display_via_-3": "無源標題，連結顯示為文章標題",
