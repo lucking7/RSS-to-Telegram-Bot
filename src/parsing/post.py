@@ -129,7 +129,7 @@ class Post:
         :param display_via: -2=completely disable, -1=disable but display link, 0=auto, 1=force display
         :param display_title: -1=disable, 0=auto, 1=force display
         :param display_entry_tags: -1=disable, 1=force display
-        :param style: 0=RSStT, 1=flowerss
+        :param style: 0=RSStT, 1=flowerss, 2=compact, 3=labeled
         :param display_media: -1=disable, 0=enable
         :param title_body_spacing: 0=compact, 1=blank line between title and body
         :param auto_title_from_body: -1=disable, 1=derive title from body when title is absent

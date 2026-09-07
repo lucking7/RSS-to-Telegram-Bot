@@ -139,6 +139,8 @@
         "style": "Style",
         "style_0": "RSStT",
         "style_1": "flowerss",
+        "style_2": "Compact source",
+        "style_3": "Labeled source",
         "set_custom_title_button": "Custom title…",
         "set_custom_interval_button": "Custom interval (in minutes)…",
         "set_custom_hashtags_button": "Custom hashtags…",

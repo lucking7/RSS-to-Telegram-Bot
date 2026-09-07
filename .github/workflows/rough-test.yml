@@ -37,6 +37,8 @@ jobs:
           set -eux
           python3 -m pip install --upgrade pip wheel setuptools
           pip install -r requirements.txt
+      - name: Test source formatting and settings
+        run: python -m tests.test_source_styles
       - name: Setup PostgreSQL
         if: matrix.os == 'ubuntu-latest'
         shell: bash

@@ -139,6 +139,8 @@
         "style": "樣式",
         "style_0": "",
         "style_1": "",
+        "style_2": "簡潔來源",
+        "style_3": "來源標籤",
         "set_custom_title_button": "自訂標題…",
         "set_custom_interval_button": "自訂間隔 (以分鐘為單位)…",
         "set_custom_hashtags_button": "自訂 hashtag…",

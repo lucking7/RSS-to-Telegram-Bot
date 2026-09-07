@@ -82,7 +82,7 @@ async def callback_set(
     display_via: -2=completely disable, -1=disable but display link, 0=auto, 1=force display
     display_title: -1=disable, 0=auto, 1=force display
     display_entry_tags: -1=disable, 1=force display
-    style: 0=RSStT, 1=flowerss
+    style: 0=RSStT, 1=flowerss, 2=compact, 3=labeled
     """
     chat_id = chat_id or event.chat_id
     callback_tail = get_callback_tail(event, chat_id)

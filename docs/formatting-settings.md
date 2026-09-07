@@ -51,6 +51,10 @@
 - **Style**:
     - **<ins>RSStT</ins>**: the default message style of RSS to Telegram Bot
     - **flowerss**: a style that looks like [flowerss](https://github.com/indes/flowerss-bot)
+    - **Compact source**: `华尔街见闻 · 股市资讯｜张三`. Removes `via` and `(author: ...)`; links the source to the original article. Spaces around `·` are normalized for display only.
+    - **Labeled source**: `来源：华尔街见闻 · 股市资讯｜作者：张三`.
+      Both new styles keep the existing author/source visibility controls, including body-end authors, and work with message, link-only, and Telegraph modes. Missing authors leave no separator. In Auto author mode, authors already present in the displayed feed name are omitted.
+      Select a style through `/set` for one subscription or `/set_default` for the user default. Existing subscriptions and defaults are not changed automatically. Media parsing and refresh intervals are unchanged.
 - **Custom title**: custom subscription title, overrides the feed title
 - **Custom hashtags**: custom subscription hashtags, will be inserted after the post title
 
