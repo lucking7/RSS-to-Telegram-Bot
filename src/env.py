@@ -267,10 +267,10 @@ TELEGRAPH_TOKEN: Final = __list_parser(os.environ.get('TELEGRAPH_TOKEN'))
 
 MULTIUSER: Final = __bool_parser(os.environ.get('MULTIUSER'), default_value=True)
 
-MONITOR_INTERVAL_SECS: Final = __int_parser('MONITOR_INTERVAL_SECS', default_value=30, min_value=1)
+MONITOR_INTERVAL_SECS: Final = __int_parser('MONITOR_INTERVAL_SECS', default_value=1, min_value=1)
 HIGH_FREQUENCY_MONITOR_INTERVAL_SECS: Final = __int_parser(
     'HIGH_FREQUENCY_MONITOR_INTERVAL_SECS',
-    default_value=30,
+    default_value=1,
     min_value=1,
 )
 HIGH_FREQUENCY_FEED_PATTERNS: Final = tuple(
@@ -281,13 +281,18 @@ HIGH_FREQUENCY_FEED_PATTERNS: Final = tuple(
         '/kaipanla/dapanzhibo',
         '/kaipanla/review',
         '/kaipanla/zt',
+        '/longbridge/',
         '/longbridge/flash',
+        '/futu',
+        '/futunn/',
         '/jin10',
+        '/sina/',
         '/sina/724',
         '/sina/finance/724',
         '/sina/rollnews',
         '/sina/finance/rollnews',
         '/futunn/live',
+        '/cls/',
         '/cls/telegraph',
         '/cls/dianbao',
     )

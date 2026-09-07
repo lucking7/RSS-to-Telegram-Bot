@@ -37,7 +37,7 @@ SUB_OPTIONS_EXHAUSTIVE_VALUES = {
     "display_via": (0, 1, -3, -1, -4, -2),
     "display_title": (0, 1, -1),
     "display_entry_tags": (1, -1),
-    "style": (0, 1),
+    "style": (0, 1, 2, 3),
     "title_body_spacing": (0, 1),
     "auto_title_from_body": (-1, 1),
 }
@@ -158,7 +158,7 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
                 data=f'set={sub_or_user.id},high_frequency_interval|{page}{tail}',
             ),
         )
-        if show_high_frequency_controls and is_high_frequency_feed
+        if show_high_frequency_controls
         else None,
         (
             Button.inline(
@@ -336,7 +336,7 @@ async def get_customization_buttons(sub_or_user: Union[db.Sub, db.User],
 
 
 def get_high_frequency_interval_choices() -> tuple[int, ...]:
-    choices = (env.MONITOR_INTERVAL_SECS, 30, 60, 120, 300)
+    choices = (1, 10, 30)
     return tuple(dict.fromkeys(interval for interval in choices if interval >= env.MONITOR_INTERVAL_SECS))
 
 

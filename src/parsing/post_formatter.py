@@ -19,6 +19,7 @@ from typing import Union, Optional
 from typing_extensions import Final
 
 import asyncio
+import re
 from aiographfix.utils import exceptions
 from aiohttp import ClientError
 from rapidfuzz import fuzz
@@ -47,6 +48,8 @@ COMPLETELY_DISABLE: Final = -2
 ONLY_MEDIA_NO_CONTENT: Final = 1
 RSSTT: Final = 0
 FLOWERSS: Final = 1
+COMPACT: Final = 2
+LABELED: Final = 3
 
 # via type
 NO_VIA: Final = 'no_via'
@@ -65,7 +68,9 @@ TypeMessageType = Union[NORMAL_MESSAGE, TELEGRAPH_MESSAGE, LINK_MESSAGE]
 # message style
 NORMAL_STYLE: Final = 'normal_style'
 FLOWERSS_STYLE: Final = 'flowerss_style'
-TypeMessageStyle = Union[NORMAL_STYLE, FLOWERSS_STYLE]
+COMPACT_STYLE: Final = 'compact_style'
+LABELED_STYLE: Final = 'labeled_style'
+TypeMessageStyle = Union[NORMAL_STYLE, FLOWERSS_STYLE, COMPACT_STYLE, LABELED_STYLE]
 
 # post title type
 POST_TITLE_NO_LINK: Final = 'post_title_no_link'
@@ -157,7 +162,7 @@ class PostFormatter:
             -1=disable but display link at the end, 0=feed title and link, 1=feed title and link as post title
         :param display_title: -1=disable, 0=auto, 1=force display
         :param display_entry_tags: -1=disable, 1=force display
-        :param style: 0=RSStT, 1=flowerss
+        :param style: 0=RSStT, 1=flowerss, 2=compact, 3=labeled
         :param display_media: -1=disable, 0=enable
         :param title_body_spacing: 0=compact, 1=blank line between title and body
         :param auto_title_from_body: -1=disable, 1=derive title from body when title is absent
@@ -172,7 +177,7 @@ class PostFormatter:
         assert display_title in {DISABLE, AUTO, FORCE_DISPLAY}
         assert display_entry_tags in {DISABLE, FORCE_DISPLAY}
         assert display_media in {DISABLE, AUTO, ONLY_MEDIA_NO_CONTENT}
-        assert style in {RSSTT, FLOWERSS}
+        assert style in {RSSTT, FLOWERSS, COMPACT, LABELED}
         assert title_body_spacing in {AUTO, FORCE_ENABLE}
         assert auto_title_from_body in {DISABLE, FORCE_ENABLE}
 
@@ -246,6 +251,15 @@ class PostFormatter:
                 )
         )
 
+        if style in {COMPACT, LABELED}:
+            need_author = bool(
+                display_author != DISABLE and self.author and self.author.strip()
+                and (display_author != AUTO or not (
+                    sub_title and self.author.strip() in sub_title
+                    and via_type in {FEED_TITLE_VIA_NO_LINK, FEED_TITLE_VIA_W_LINK}
+                ))
+            )
+
         # ---- determine tags ----
         if display_entry_tags == FORCE_DISPLAY:
             if self.tags_escaped is None:
@@ -254,7 +268,11 @@ class PostFormatter:
                 tags = utils.merge_tags(tags, self.tags_escaped) if tags else self.tags_escaped
 
         # ---- determine message_style ----
-        if style == FLOWERSS:
+        if style == COMPACT:
+            message_style = COMPACT_STYLE
+        elif style == LABELED:
+            message_style = LABELED_STYLE
+        elif style == FLOWERSS:
             message_style = FLOWERSS_STYLE
         else:  # RSSTT
             message_style = NORMAL_STYLE
@@ -456,7 +474,11 @@ class PostFormatter:
         # ---- author ----
         author_html = Text(f'(author: {self.author})').get_html() if need_author and self.author else None
 
-        if message_style == NORMAL_STYLE:
+        if message_style in {NORMAL_STYLE, COMPACT_STYLE, LABELED_STYLE}:
+            modern_style = message_style in {COMPACT_STYLE, LABELED_STYLE}
+            if modern_style:
+                feed_title = re.sub(r'\s*·\s*', ' · ', feed_title or '').strip()
+                author_html = Text(self.author).get_html() if need_author and self.author else None
             # ---- title ----
             if message_type == TELEGRAPH_MESSAGE:
                 title_text = Link(title, param=self.telegraph_link)
@@ -481,6 +503,17 @@ class PostFormatter:
                 via_text = None
             via_html = via_text.get_html() if via_text else None
 
+            if modern_style:
+                if via_type == FEED_TITLE_VIA_W_LINK:
+                    via_html = (Link(feed_title, param=self.link) if self.link else Text(feed_title)).get_html()
+                elif via_type == FEED_TITLE_VIA_NO_LINK:
+                    via_html = Text(feed_title).get_html()
+                elif via_type == TEXT_LINK_VIA and self.link:
+                    via_html = Link('阅读原文', param=self.link).get_html()
+                if message_style == LABELED_STYLE:
+                    via_html = '来源：' + via_html if via_html else None
+                    author_html = '作者：' + author_html if author_html else None
+
             header = (
                     (title_html or '')
                     + ('\n' if title_html and tags_html else '')
@@ -489,7 +522,7 @@ class PostFormatter:
 
             footer = (
                     (via_html or '')
-                    + (' ' if via_html and author_html else '')
+                    + (('｜' if modern_style else ' ') if via_html and author_html else '')
                     + (author_html or '')
             )
 

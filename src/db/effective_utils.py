@@ -252,9 +252,7 @@ class EffectiveTasks:
     @classmethod
     def get_interval_secs_for_feed(cls, interval: int, link: Optional[str] = None) -> int:
         interval_secs = (interval or EffectiveOptions.default_interval) * 60
-        if is_high_frequency_feed(link):
-            return min(interval_secs, get_high_frequency_monitor_interval_secs())
-        return interval_secs
+        return min(interval_secs, get_high_frequency_monitor_interval_secs())
 
     @classmethod
     def update(cls, feed_id: int, interval: int = None, link: Optional[str] = None) -> NoReturn:
