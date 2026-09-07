@@ -124,9 +124,6 @@ async def callback_set(
             if not is_manager:
                 await event.answer(i18n[lang]['permission_denied_not_bot_manager'], alert=True)
                 return
-            if not db.effective_utils.is_high_frequency_feed(sub_or_user.feed.link):
-                await event.answer(i18n[lang]['high_frequency_feed_not_whitelisted'], alert=True)
-                return
             await inner.customization.set_high_frequency_interval(param)
         elif action == 'length_limit' and (isinstance(param, int) or param == 'default'):
             await inner.customization.set_length_limit(sub_or_user, param if param != 'default' else -100)
@@ -164,9 +161,6 @@ async def callback_set(
     if action == 'high_frequency_interval' and not set_user_default:
         if not is_manager:
             await event.answer(i18n[lang]['permission_denied_not_bot_manager'], alert=True)
-            return
-        if not db.effective_utils.is_high_frequency_feed(sub_or_user.feed.link):
-            await event.answer(i18n[lang]['high_frequency_feed_not_whitelisted'], alert=True)
             return
         msg = i18n[lang]['set_high_frequency_interval_prompt']
         buttons = await inner.customization.get_set_high_frequency_interval_buttons(
