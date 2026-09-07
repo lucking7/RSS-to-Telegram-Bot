@@ -93,6 +93,7 @@ class Post:
             display_title=sub.display_title if sub.display_title != -100 else user.display_title,
             display_entry_tags=sub.display_entry_tags if sub.display_entry_tags != -100 else user.display_entry_tags,
             style=sub.style if sub.style != -100 else user.style,
+            attribution_format=sub.attribution_format if sub.attribution_format != -100 else user.attribution_format,
             display_media=sub.display_media if sub.display_media != -100 else user.display_media,
             title_body_spacing=sub.title_body_spacing if sub.title_body_spacing != -100 else user.title_body_spacing,
             auto_title_from_body=sub.auto_title_from_body if sub.auto_title_from_body != -100 else user.auto_title_from_body,
@@ -114,7 +115,8 @@ class Post:
                                   display_media: int = 0,
                                   title_body_spacing: int = 0,
                                   auto_title_from_body: int = -1,
-                                  silent: bool = False):
+                                  silent: bool = False,
+                                  attribution_format: int = 0):
         """
         Send formatted post.
 
@@ -129,9 +131,10 @@ class Post:
         :param display_via: -2=completely disable, -1=disable but display link, 0=auto, 1=force display
         :param display_title: -1=disable, 0=auto, 1=force display
         :param display_entry_tags: -1=disable, 1=force display
-        :param style: 0=RSStT, 1=flowerss, 2=compact, 3=labeled
+        :param style: 0=RSStT, 1=flowerss (2/3 remain legacy API aliases)
+        :param attribution_format: 0=traditional, 1=compact, 2=labeled
         :param display_media: -1=disable, 0=enable
-        :param title_body_spacing: 0=compact, 1=blank line between title and body
+        :param title_body_spacing: 0=compact, 1=blank line between title, body and footer
         :param auto_title_from_body: -1=disable, 1=derive title from body when title is absent
         :param silent: whether to send with notification sound
         """
@@ -148,6 +151,7 @@ class Post:
                                                                  display_title=display_title,
                                                                  display_entry_tags=display_entry_tags,
                                                                  style=style,
+                                                                 attribution_format=attribution_format,
                                                                  display_media=display_media,
                                                                  title_body_spacing=title_body_spacing,
                                                                  auto_title_from_body=auto_title_from_body)
@@ -209,6 +213,9 @@ class Post:
                 display_via=user.display_via,
                 display_title=user.display_title,
                 style=user.style,
+                attribution_format=user.attribution_format,
+                title_body_spacing=user.title_body_spacing,
+                auto_title_from_body=user.auto_title_from_body,
                 display_media=user.display_media,
                 silent=not user.notify,
                 display_entry_tags=user.display_entry_tags,

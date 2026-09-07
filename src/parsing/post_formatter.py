@@ -68,9 +68,7 @@ TypeMessageType = Union[NORMAL_MESSAGE, TELEGRAPH_MESSAGE, LINK_MESSAGE]
 # message style
 NORMAL_STYLE: Final = 'normal_style'
 FLOWERSS_STYLE: Final = 'flowerss_style'
-COMPACT_STYLE: Final = 'compact_style'
-LABELED_STYLE: Final = 'labeled_style'
-TypeMessageStyle = Union[NORMAL_STYLE, FLOWERSS_STYLE, COMPACT_STYLE, LABELED_STYLE]
+TypeMessageStyle = Union[NORMAL_STYLE, FLOWERSS_STYLE]
 
 # post title type
 POST_TITLE_NO_LINK: Final = 'post_title_no_link'
@@ -147,7 +145,8 @@ class PostFormatter:
                                  style: int = 0,
                                  display_media: int = 0,
                                  title_body_spacing: int = 0,
-                                 auto_title_from_body: int = -1) -> Optional[tuple[str, bool, bool]]:
+                                 auto_title_from_body: int = -1,
+                                 attribution_format: int = 0) -> Optional[tuple[str, bool, bool]]:
         """
         Get formatted post.
 
@@ -162,9 +161,10 @@ class PostFormatter:
             -1=disable but display link at the end, 0=feed title and link, 1=feed title and link as post title
         :param display_title: -1=disable, 0=auto, 1=force display
         :param display_entry_tags: -1=disable, 1=force display
-        :param style: 0=RSStT, 1=flowerss, 2=compact, 3=labeled
+        :param style: 0=RSStT, 1=flowerss (2/3 remain legacy API aliases)
+        :param attribution_format: 0=traditional, 1=compact, 2=labeled
         :param display_media: -1=disable, 0=enable
-        :param title_body_spacing: 0=compact, 1=blank line between title and body
+        :param title_body_spacing: 0=compact, 1=blank line between title, body and footer
         :param auto_title_from_body: -1=disable, 1=derive title from body when title is absent
         :return: (formatted post, need media, need linkpreview)
         """
@@ -177,7 +177,12 @@ class PostFormatter:
         assert display_title in {DISABLE, AUTO, FORCE_DISPLAY}
         assert display_entry_tags in {DISABLE, FORCE_DISPLAY}
         assert display_media in {DISABLE, AUTO, ONLY_MEDIA_NO_CONTENT}
-        assert style in {RSSTT, FLOWERSS, COMPACT, LABELED}
+        # Accept the former combined styles for callers outside the settings UI.
+        if style in {COMPACT, LABELED}:
+            attribution_format = style - 1
+            style = RSSTT
+        assert style in {RSSTT, FLOWERSS}
+        assert attribution_format in {0, 1, 2}
         assert title_body_spacing in {AUTO, FORCE_ENABLE}
         assert auto_title_from_body in {DISABLE, FORCE_ENABLE}
 
@@ -186,7 +191,7 @@ class PostFormatter:
 
         param_hash = f'{sub_title}|{tags}|{send_mode}|{length_limit}|{link_preview}|' \
                      f'{display_author}|{display_via}|{display_title}|{display_entry_tags}|{display_media}|{style}|' \
-                     f'{title_body_spacing}|{auto_title_from_body}'
+                     f'{title_body_spacing}|{auto_title_from_body}|{attribution_format}'
 
         if param_hash in self.__param_to_option_cache:
             option_hash = self.__param_to_option_cache[param_hash]
@@ -251,7 +256,7 @@ class PostFormatter:
                 )
         )
 
-        if style in {COMPACT, LABELED}:
+        if attribution_format in {1, 2}:
             need_author = bool(
                 display_author != DISABLE and self.author and self.author.strip()
                 and (display_author != AUTO or not (
@@ -268,11 +273,7 @@ class PostFormatter:
                 tags = utils.merge_tags(tags, self.tags_escaped) if tags else self.tags_escaped
 
         # ---- determine message_style ----
-        if style == COMPACT:
-            message_style = COMPACT_STYLE
-        elif style == LABELED:
-            message_style = LABELED_STYLE
-        elif style == FLOWERSS:
+        if style == FLOWERSS:
             message_style = FLOWERSS_STYLE
         else:  # RSSTT
             message_style = NORMAL_STYLE
@@ -303,6 +304,7 @@ class PostFormatter:
                                                            need_author=need_author,
                                                            message_type=NORMAL_MESSAGE,
                                                            message_style=message_style,
+                                                           attribution_format=attribution_format,
                                                            title_body_spacing=title_body_spacing,
                                                            auto_title_from_body=auto_title_from_body,
                                                            display_author=display_author)
@@ -363,7 +365,7 @@ class PostFormatter:
         need_link_preview = link_preview != DISABLE and (link_preview == FORCE_ENABLE or message_type != NORMAL_MESSAGE)
 
         option_hash = f'{sub_title}|{tags}|{title_type}|{via_type}|{need_author}|{display_author}|{message_type}|{message_style}|' \
-                      f'{title_body_spacing}|{auto_title_from_body}'
+                      f'{title_body_spacing}|{auto_title_from_body}|{attribution_format}'
         self.__param_to_option_cache[param_hash] = option_hash
 
         if option_hash in self.__post_bucket:
@@ -397,6 +399,7 @@ class PostFormatter:
                                                 need_author=need_author,
                                                 message_type=message_type,
                                                 message_style=message_style,
+                                                attribution_format=attribution_format,
                                                 title_body_spacing=title_body_spacing,
                                                 auto_title_from_body=auto_title_from_body,
                                                 display_author=display_author)
@@ -412,7 +415,8 @@ class PostFormatter:
                                    message_type: TypeMessageType,
                                    message_style: TypeMessageStyle,
                                    title_body_spacing: int = 0,
-                                   auto_title_from_body: int = -1) -> tuple[str, str]:
+                                   auto_title_from_body: int = -1,
+                                   attribution_format: int = 0) -> tuple[str, str]:
         # RSStT style:
         # {title}
         # {hashtag}  (* optional)
@@ -474,11 +478,11 @@ class PostFormatter:
         # ---- author ----
         author_html = Text(f'(author: {self.author})').get_html() if need_author and self.author else None
 
-        if message_style in {NORMAL_STYLE, COMPACT_STYLE, LABELED_STYLE}:
-            modern_style = message_style in {COMPACT_STYLE, LABELED_STYLE}
-            if modern_style:
-                feed_title = re.sub(r'\s*·\s*', ' · ', feed_title or '').strip()
-                author_html = Text(self.author).get_html() if need_author and self.author else None
+        modern_style = attribution_format in {1, 2}
+        if modern_style:
+            feed_title = re.sub(r'\s*·\s*', ' · ', feed_title or '').strip()
+            author_html = Text(self.author).get_html() if need_author and self.author else None
+        if message_style == NORMAL_STYLE:
             # ---- title ----
             if message_type == TELEGRAPH_MESSAGE:
                 title_text = Link(title, param=self.telegraph_link)
@@ -510,7 +514,7 @@ class PostFormatter:
                     via_html = Text(feed_title).get_html()
                 elif via_type == TEXT_LINK_VIA and self.link:
                     via_html = Link('阅读原文', param=self.link).get_html()
-                if message_style == LABELED_STYLE:
+                if attribution_format == 2:
                     via_html = '来源：' + via_html if via_html else None
                     author_html = '作者：' + author_html if author_html else None
 
@@ -534,6 +538,11 @@ class PostFormatter:
             else:
                 feed_title_html = None
 
+            if attribution_format == 2 and feed_title_html:
+                feed_title_html = '来源：' + feed_title_html
+            if attribution_format == 2 and author_html:
+                author_html = '作者：' + author_html
+
             # ---- title ----
             if effective_title_type == POST_TITLE_W_LINK:
                 title_html = Bold(Underline(Link(title, param=self.link))).get_html()
@@ -548,13 +557,13 @@ class PostFormatter:
                 if via_type == BARE_LINK_VIA and self.link:
                     sourcing_html += '\n' + self.link
                 elif via_type != NO_VIA and self.link:
-                    sourcing_html += ' | ' + Link('source', param=self.link).get_html()
+                    sourcing_html += ' | ' + Link('阅读原文' if modern_style else 'source', param=self.link).get_html()
             elif via_type in {NO_VIA, FEED_TITLE_VIA_NO_LINK}:
                 sourcing_html = None
             elif via_type == BARE_LINK_VIA and self.link:
                 sourcing_html = self.link
             else:  # NORMAL_MESSAGE
-                sourcing_html = Link('source', param=self.link).get_html() if self.link else None
+                sourcing_html = Link('阅读原文' if modern_style else 'source', param=self.link).get_html() if self.link else None
 
             header = (
                     (feed_title_html or '')
@@ -595,7 +604,8 @@ class PostFormatter:
                                 message_style: TypeMessageStyle,
                                 title_body_spacing: int = 0,
                                 auto_title_from_body: int = -1,
-                                display_author: int = 0) -> str:
+                                display_author: int = 0,
+                                attribution_format: int = 0) -> str:
         header, footer = self.get_post_header_and_footer(sub_title=sub_title,
                                                          tags=tags,
                                                          title_type=title_type,
@@ -603,6 +613,7 @@ class PostFormatter:
                                                          need_author=need_author and display_author != FORCE_DISPLAY_INLINE,
                                                          message_type=message_type,
                                                          message_style=message_style,
+                                                         attribution_format=attribution_format,
                                                          title_body_spacing=title_body_spacing,
                                                          auto_title_from_body=auto_title_from_body)
         content = self.parsed_html if message_type == NORMAL_MESSAGE else ''
@@ -616,7 +627,7 @@ class PostFormatter:
                         + (' ' if footer else '')
                         + author_inline_html
                 )
-        sep = '\n' if title_body_spacing == 1 else '\n\n'
+        sep = '\n\n' if title_body_spacing == 1 else '\n'
         return (
                 header
                 + (sep if header and content else '')

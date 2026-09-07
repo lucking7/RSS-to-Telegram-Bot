@@ -48,13 +48,18 @@
     - **<ins>Auto</ins>**: enable Telegram link preview when a post is sent as a Telegraph post or only its title and source are sent as a Telegram message
     - **Enable**: always enable Telegram link preview _(note that a message containing media does not support link preview)_
     - **Disable**: always disable Telegram link preview
-- **Style**:
+- **Message layout**:
     - **<ins>RSStT</ins>**: the default message style of RSS to Telegram Bot
     - **flowerss**: a style that looks like [flowerss](https://github.com/indes/flowerss-bot)
-    - **Compact source**: `华尔街见闻 · 股市资讯｜张三`. Removes `via` and `(author: ...)`; links the source to the original article. Spaces around `·` are normalized for display only.
-    - **Labeled source**: `来源：华尔街见闻 · 股市资讯｜作者：张三`.
-      Both new styles keep the existing author/source visibility controls, including body-end authors, and work with message, link-only, and Telegraph modes. Missing authors leave no separator. In Auto author mode, authors already present in the displayed feed name are omitted.
-      Select a style through `/set` for one subscription or `/set_default` for the user default. Existing subscriptions and defaults are not changed automatically. Media parsing and refresh intervals are unchanged.
+- **Source and author format** (independent of layout):
+    - **Traditional**: keep the layout's original source and author formatting.
+    - **Compact**: `华尔街见闻 · 股市资讯｜张三` in RSStT layout.
+    - **Labeled**: `来源：华尔街见闻 · 股市资讯｜作者：张三` in RSStT layout.
+    - In flowerss layout, the feed name stays at the top; the original-article link and author stay at the bottom. Compact/Labeled formatting does not move them. Explicit body-end authors retain their `(name)` form.
+    - Source visibility, link placement, author visibility and media options remain independent. Missing authors leave no separator; Auto omits duplicate authors in Compact/Labeled formats.
+    - `/set` configures one subscription; `/set_default` configures inherited defaults. Existing combined styles are migrated without changing their appearance, including subscriptions with explicit legacy styles.
+- **Paragraph spacing**: Compact uses one newline; Blank line uses two between title, body and footer. Migration reverses the old numeric values to preserve existing line spacing. Inherited selections remain inherited.
+- **Global seconds interval** (manager only): affects all feeds, not just the subscription whose menu is open. Minute-based intervals remain available; the global seconds interval caps the effective polling interval.
 - **Custom title**: custom subscription title, overrides the feed title
 - **Custom hashtags**: custom subscription hashtags, will be inserted after the post title
 

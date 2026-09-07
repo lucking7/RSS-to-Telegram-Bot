@@ -64,6 +64,7 @@ class User(Model, Base):
     display_via = fields.SmallIntField(default=0)
     display_title = fields.SmallIntField(default=0)
     display_entry_tags = fields.SmallIntField(default=-1)
+    attribution_format = fields.SmallIntField(default=0)
     style = fields.SmallIntField(default=0)
     display_media = fields.SmallIntField(default=0)
     title_body_spacing = fields.SmallIntField(default=0)
@@ -200,6 +201,7 @@ class Sub(Model, Base):
     )
     # new field, use the de facto default value (-100) and with description unset to avoid future migration
     display_entry_tags = fields.SmallIntField(default=-100)
+    attribution_format = fields.SmallIntField(default=-100)
     style = fields.SmallIntField(
         default=0,
         description='Style of posts: '

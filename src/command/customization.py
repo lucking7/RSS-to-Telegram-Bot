@@ -82,7 +82,8 @@ async def callback_set(
     display_via: -2=completely disable, -1=disable but display link, 0=auto, 1=force display
     display_title: -1=disable, 0=auto, 1=force display
     display_entry_tags: -1=disable, 1=force display
-    style: 0=RSStT, 1=flowerss, 2=compact, 3=labeled
+    style: 0=RSStT, 1=flowerss
+    attribution_format: 0=traditional, 1=compact, 2=labeled
     """
     chat_id = chat_id or event.chat_id
     callback_tail = get_callback_tail(event, chat_id)
@@ -236,10 +237,10 @@ async def callback_reset(
         update_interval_flag = True
     reset_fields = (
         'interval', 'length_limit', 'notify', 'send_mode', 'link_preview', 'display_author', 'display_media',
-        'display_title', 'display_entry_tags', 'display_via', 'style', 'title_body_spacing', 'auto_title_from_body',
+        'display_title', 'display_entry_tags', 'display_via', 'style', 'attribution_format', 'title_body_spacing', 'auto_title_from_body',
     )
     sub.length_limit = sub.notify = sub.send_mode = sub.link_preview = sub.display_author = sub.display_media = \
-        sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = \
+        sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = sub.attribution_format = \
         sub.title_body_spacing = sub.auto_title_from_body = -100
     await sub.save(update_fields=reset_fields)
     if update_interval_flag:
@@ -294,13 +295,13 @@ async def callback_reset_all(
             tasks.append(inner.utils.update_interval(sub))
         sub.interval = None
         sub.length_limit = sub.notify = sub.send_mode = sub.link_preview = sub.display_author = sub.display_media = \
-            sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = \
+            sub.display_title = sub.display_entry_tags = sub.display_via = sub.style = sub.attribution_format = \
             sub.title_body_spacing = sub.auto_title_from_body = -100
     await db.Sub.bulk_update(
         subs,
         (
             'interval', 'length_limit', 'notify', 'send_mode', 'link_preview', 'display_author', 'display_media',
-            'display_title', 'display_entry_tags', 'display_via', 'style', 'title_body_spacing', 'auto_title_from_body',
+            'display_title', 'display_entry_tags', 'display_via', 'style', 'attribution_format', 'title_body_spacing', 'auto_title_from_body',
         )
     )
     for task in tasks:
