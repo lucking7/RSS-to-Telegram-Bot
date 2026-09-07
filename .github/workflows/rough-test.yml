@@ -39,6 +39,11 @@ jobs:
           pip install -r requirements.txt
       - name: Test source formatting and settings
         run: python -m tests.test_source_styles
+      - name: Fetch pinned legacy migration fixture
+        shell: bash
+        run: |
+          git fetch --no-tags https://github.com/Rongronggg9/RSS-to-Telegram-Bot.git \
+            ceb602209a629b8595c03d94a42e49c1a2b46084:refs/heads/ci/aerich-0.6
       - name: Setup PostgreSQL
         if: matrix.os == 'ubuntu-latest'
         shell: bash
@@ -110,7 +115,7 @@ jobs:
           rm -rf config
           cp .env_sqlite .env
           CURR_REF="$(git rev-parse HEAD)"
-          git checkout stale/aerich-0.6
+          git checkout ci/aerich-0.6
           '${{ steps.cp39.outputs.python-path }}' -m pip install -qr requirements.txt
           '${{ steps.cp39.outputs.python-path }}' -u telegramRSSbot.py
           git checkout "$CURR_REF"
@@ -125,7 +130,7 @@ jobs:
           sudo -u postgres psql -c "CREATE DATABASE test OWNER test;"
           cp .env_postgresql .env
           CURR_REF="$(git rev-parse HEAD)"
-          git checkout stale/aerich-0.6
+          git checkout ci/aerich-0.6
           '${{ steps.cp39.outputs.python-path }}' -m pip install -qr requirements.txt
           '${{ steps.cp39.outputs.python-path }}' -u telegramRSSbot.py
           git checkout "$CURR_REF"

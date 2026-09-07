@@ -1,5 +1,12 @@
 name: Publish to Test PyPI
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/publish-to-test-pypi.yml'
+      - 'setup.py'
+      - 'setup.cfg'
+      - 'pyproject.toml'
+      - 'src/version.py'
   push:
     branches:
       - dev
@@ -25,15 +32,24 @@ jobs:
           python -m pip install build --user
       - name: Build a binary wheel and a source tarball
         run: |
-          git describe --tags --always | \
-            sed -E \
-              -e 's#^v##' \
-              -e 's#([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+)-([[:digit:]]+)(-.+)?#\1.post\2#g' \
-              -e 's#^#__version__ = "#' \
-              -e 's#$#"#' \
-            >src/version.py
+          BASE_VERSION=$(python -c 'import runpy; print(runpy.run_path("src/version.py")["__version__"])')
+          REVISION_COUNT=$(git rev-list --count HEAD)
+          printf '__version__ = "%s.post%s"\n' "$BASE_VERSION" "$REVISION_COUNT" > src/version.py
           python -m build --sdist --wheel --outdir dist/ .
+      - name: Check optional Test PyPI publishing
+        id: publish
+        env:
+          PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [[ "$EVENT_NAME" != pull_request && -n "$PUBLISH_TOKEN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Package built successfully; publishing skipped for pull requests or without TEST_PYPI_API_TOKEN." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Publish distribution to Test PyPI
+        if: steps.publish.outputs.enabled == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
