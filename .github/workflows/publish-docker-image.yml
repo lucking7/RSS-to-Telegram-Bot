@@ -11,7 +11,26 @@ on:
       - '**.sample'
 
 jobs:
+  credentials:
+    name: Check optional Docker Hub publishing
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+        run: |
+          if [[ -n "$DOCKER_USERNAME" && -n "$DOCKER_PASSWORD" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Docker Hub publishing skipped: configure DOCKER_USERNAME and DOCKER_PASSWORD to enable it." >> "$GITHUB_STEP_SUMMARY"
+          fi
   push:
+    needs: credentials
+    if: needs.credentials.outputs.enabled == 'true'
     name: Push Docker image to Docker Hub
     runs-on: ubuntu-latest
     steps:
@@ -73,6 +92,8 @@ jobs:
           cache-to: type=inline
 
   description:
+    needs: credentials
+    if: needs.credentials.outputs.enabled == 'true'
     name: Update repository description on Docker Hub
     runs-on: ubuntu-latest
     steps:

@@ -20,8 +20,19 @@ jobs:
       - name: Build a binary wheel and a source tarball
         run: |
           python -m build --sdist --wheel --outdir dist/ .
+      - name: Check optional PyPI publishing
+        id: publish
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [[ -n "$PUBLISH_TOKEN" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Package built successfully; publishing skipped without PYPI_API_TOKEN." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Publish distribution to PyPI
-#        if: startsWith(github.ref, 'refs/tags')
+        if: steps.publish.outputs.enabled == 'true'
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
